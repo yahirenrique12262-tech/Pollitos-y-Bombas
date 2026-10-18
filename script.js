@@ -14,6 +14,11 @@ function unlockAudioAndHide() {
     if(container) container.style.display = 'none';
 }
 
+function dismissRotateWarning() {
+    const warning = document.getElementById('rotate-device-warning');
+    if(warning) warning.style.display = 'none';
+}
+
 function playBGM(mode) {
     Object.keys(audios).forEach(k => {
         if (k !== 'btn' && audios[k]) {
@@ -67,7 +72,7 @@ const POLLITO_CARDS = [
     { id: 'p22', name: 'Fotógrafo', icon: 'fa-camera', trivia: 'Joseph Nicéphore Niépce logró la primera fotografía permanente de la historia en el año 1826.' },
     { id: 'p23', name: 'Biólogo Marino', icon: 'fa-fish', trivia: 'Aristóteles es considerado el primer biólogo marino por sus detalladas descripciones de la vida en el mar Egeo.' },
     { id: 'p24', name: 'Ing. Biomédico', icon: 'fa-heart-pulse', trivia: 'Nació de la unión entre la medicina y la ingeniería tras el desarrollo de los primeros equipos de rayos X y electrocardiogramas.' },
-    { id: 'p25', name: 'Periodista', icon: 'fa-newspaper', trivia: 'Las gacetas informativas impresas comenzaron a circular masivamente en Europa tras la invención de la imprenta de Gutenberg.' }
+    { id: 'p25', name: 'Periodista', icon: 'fa-newspaper', trivia: 'Las gacetas informativas impresas comenzaron a circular masivamente en Europa tras la imprenta de Gutenberg.' }
 ];
 
 const BOMBA_CARDS = [
@@ -285,7 +290,7 @@ function updateColorSelection(radio) {
     const previewBox = document.getElementById('preview-avatar-box');
     const selectedColor = radio.value;
     if(previewBox) {
-        previewBox.className = `w-20 h-20 rounded-xl border-2 border-white flex items-center justify-center shadow-xl mb-3 transition-all duration-300 ${AVATAR_COLORS[selectedColor] || 'bg-yellow-400 text-slate-900'}`;
+        previewBox.className = `w-16 h-16 md:w-20 md:h-20 rounded-xl border-2 border-white flex items-center justify-center shadow-xl mb-3 transition-all duration-300 ${AVATAR_COLORS[selectedColor] || 'bg-yellow-400 text-slate-900'}`;
     }
 }
 
@@ -374,8 +379,8 @@ function startGame(mode) {
 
     const avatarEl = document.getElementById('player-avatar');
     if(avatarEl) {
-        avatarEl.className = `w-10 h-10 rounded-lg border-2 border-white flex items-center justify-center shadow-md ${AVATAR_COLORS[gameState.playerColor] || 'bg-yellow-400 text-slate-900'}`;
-        avatarEl.innerHTML = `<i class="fa-solid ${selectedAvatarSiluette.icon} text-lg"></i>`;
+        avatarEl.className = `w-8 h-8 md:w-10 md:h-10 rounded-lg border-2 border-white flex items-center justify-center shadow-md ${AVATAR_COLORS[gameState.playerColor] || 'bg-yellow-400 text-slate-900'}`;
+        avatarEl.innerHTML = `<i class="fa-solid ${selectedAvatarSiluette.icon} text-sm md:text-lg"></i>`;
     }
 
     currentRival = RIVAL_AVATARS[Math.floor(Math.random() * RIVAL_AVATARS.length)];
@@ -672,9 +677,9 @@ function evaluateFinalCardsPhase(playerFinalCards, rivalFinalCards, rivalDecisio
     const verticalPlayer = document.getElementById('vertical-player-slot');
     const verticalRival = document.getElementById('vertical-rival-slot');
 
-    if(pSlot) pSlot.innerHTML = playerFinalCards.length > 0 ? playerFinalCards.map(c => `<div class="w-20 h-28 inline-block m-1">${renderCardHTML(c, true)}</div>`).join('') : '<span class="text-xs text-slate-400 font-pixel">Ninguna</span>';
-    if(verticalPlayer) verticalPlayer.innerHTML = playerFinalCards.length > 0 ? playerFinalCards.map(c => `<div class="w-12 h-16 inline-block">${renderCardHTML(c, true)}</div>`).join('') : '';
-    if(verticalRival) verticalRival.innerHTML = rivalFinalCards.length > 0 ? rivalFinalCards.map(c => `<div class="w-12 h-16 inline-block">${renderCardHTML(c, true)}</div>`).join('') : '';
+    if(pSlot) pSlot.innerHTML = playerFinalCards.length > 0 ? playerFinalCards.map(c => `<div class="w-16 h-24 md:w-20 md:h-28 inline-block m-1">${renderCardHTML(c, true)}</div>`).join('') : '<span class="text-xs text-slate-400 font-pixel">Ninguna</span>';
+    if(verticalPlayer) verticalPlayer.innerHTML = playerFinalCards.length > 0 ? playerFinalCards.map(c => `<div class="w-10 h-14 md:w-12 md:h-16 inline-block">${renderCardHTML(c, true)}</div>`).join('') : '';
+    if(verticalRival) verticalRival.innerHTML = rivalFinalCards.length > 0 ? rivalFinalCards.map(c => `<div class="w-10 h-14 md:w-12 md:h-16 inline-block">${renderCardHTML(c, true)}</div>`).join('') : '';
 
     playerFinalCards.forEach(c => unlockCardInCollection(c.id));
     rivalFinalCards.forEach(c => unlockCardInCollection(c.id));
@@ -690,16 +695,16 @@ function evaluateFinalCardsPhase(playerFinalCards, rivalFinalCards, rivalDecisio
 
     if (gameState.mode === 'tutorial') {
         showTutorialModal(`
-            <div class="space-y-3 mt-2 text-[12px]">
-                <h3 class="text-base text-amber-300 font-pixel text-center mb-4">¿Cómo se juega?</h3>
-                <p><span class="text-emerald-400 font-bold text-sm">L</span>a ronda inicia repartiendo una carta a cada uno.</p>
-                <p><span class="text-amber-400 font-bold text-sm">S</span>e ve la carta y se voltea de nuevo.</p>
-                <p><span class="text-rose-400 font-bold text-sm">L</span>as cartas se intercambian e inicia la fase de mención.</p>
-                <p><span class="text-sky-400 font-bold text-sm">D</span>ebes mencionar la carta que tenías y ahora tiene tu rival, puedes mentir o decir la verdad.</p>
-                <p><span class="text-purple-400 font-bold text-sm">T</span>u rival también mencionará qué carta tenía, ¿Miente o dice la verdad?</p>
-                <p><span class="text-orange-400 font-bold text-sm">A</span>hora decide, te quedas con la carta o se la avientas.</p>
-                <p><span class="text-pink-400 font-bold text-sm">S</span>i al final tienes una carta, 2 cartas o ninguna dependerá de ti y tu rival.</p>
-                <p><span class="text-yellow-400 font-bold text-sm">L</span>as cartas se voltean, si tienes un pollito sumas un punto, si tienes una bomba pierdes un punto, si tienes una bomba y un pollito no pasa nada porque tu hermano desactiva la bomba y vuelven a la baraja.</p>
+            <div class="space-y-3 mt-2 text-[11px] md:text-[12px]">
+                <h3 class="text-sm md:text-base text-amber-300 font-pixel text-center mb-4">¿Cómo se juega?</h3>
+                <p><span class="text-emerald-400 font-bold">L</span>a ronda inicia repartiendo una carta a cada uno.</p>
+                <p><span class="text-amber-400 font-bold">S</span>e ve la carta y se voltea de nuevo.</p>
+                <p><span class="text-rose-400 font-bold">L</span>as cartas se intercambian e inicia la fase de mención.</p>
+                <p><span class="text-sky-400 font-bold">D</span>ebes mencionar la carta que tenías y ahora tiene tu rival, puedes mentir o decir la verdad.</p>
+                <p><span class="text-purple-400 font-bold">T</span>u rival también mencionará qué carta tenía, ¿Miente o dice la verdad?</p>
+                <p><span class="text-orange-400 font-bold">A</span>hora decide, te quedas con la carta o se la avientas.</p>
+                <p><span class="text-pink-400 font-bold">S</span>i al final tienes una carta, 2 cartas o ninguna dependerá de ti y tu rival.</p>
+                <p><span class="text-yellow-400 font-bold">L</span>as cartas se voltean, si tienes un pollito sumas un punto, si tienes una bomba pierdes un punto, si tienes una bomba y un pollito no pasa nada porque tu hermano desactiva la bomba y vuelven a la baraja.</p>
             </div>
         `, () => {
             const modal = document.getElementById('tutorial-modal');
@@ -840,7 +845,7 @@ function showGameOver(isWin, message) {
     const msg = document.getElementById('game-over-msg');
     if(title) {
         title.innerText = isWin ? "¡VICTORIA!" : "¡DERROTA!";
-        title.className = `text-2xl font-pixel ${isWin ? 'text-emerald-400' : 'text-rose-500'}`;
+        title.className = `text-xl md:text-2xl font-pixel ${isWin ? 'text-emerald-400' : 'text-rose-500'}`;
     }
     if(msg) msg.innerText = message;
     if(modal) modal.classList.remove('hidden');
@@ -867,9 +872,9 @@ function renderCardHTML(card, isFront) {
         return `
             <div class="card-front-pollito w-full h-full">
                 <div class="card-inner-pollito">
-                    <div class="text-[9px] font-pixel text-amber-800 uppercase">Pollito</div>
-                    <i class="fa-solid ${card.icon} text-3xl md:text-4xl text-amber-700 my-auto"></i>
-                    <div class="text-[10px] font-bold text-center leading-tight text-slate-900">${card.name}</div>
+                    <div class="text-[8px] md:text-[9px] font-pixel text-amber-800 uppercase">Pollito</div>
+                    <i class="fa-solid ${card.icon} text-2xl md:text-4xl text-amber-700 my-auto"></i>
+                    <div class="text-[9px] md:text-[10px] font-bold text-center leading-tight text-slate-900">${card.name}</div>
                 </div>
             </div>
         `;
@@ -877,9 +882,9 @@ function renderCardHTML(card, isFront) {
         return `
             <div class="card-front-bomba w-full h-full">
                 <div class="card-inner-bomba">
-                    <div class="text-[9px] font-pixel text-sky-200 uppercase">Bomba</div>
-                    <i class="fa-solid ${card.icon} text-3xl md:text-4xl text-white my-auto"></i>
-                    <div class="text-[10px] font-bold text-center leading-tight text-white">${card.name}</div>
+                    <div class="text-[8px] md:text-[9px] font-pixel text-sky-200 uppercase">Bomba</div>
+                    <i class="fa-solid ${card.icon} text-2xl md:text-4xl text-white my-auto"></i>
+                    <div class="text-[9px] md:text-[10px] font-bold text-center leading-tight text-white">${card.name}</div>
                 </div>
             </div>
         `;
