@@ -1,0 +1,141 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fredoka:wght@400;600;700&display=swap');
+
+body {
+    font-family: 'Fredoka', sans-serif;
+    background-color: #0b0f19;
+}
+
+.font-pixel {
+    font-family: 'Press Start 2P', cursive;
+}
+
+/* MARCO BLANCO AL SELECCIONAR COLOR O SILUETA EN EL SETUP */
+.color-label.data-selected,
+.avatar-siluette.data-selected {
+    border-color: #ffffff !important;
+    background-color: #1e293b;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* MARCO DE LUCES BLANCO Y NEGRO INTERMITENTE PARA EL TUTORIAL (1 Segundo) */
+.tutorial-lights-frame {
+    animation: lightsFrameBlink 1s infinite steps(1);
+}
+
+@keyframes lightsFrameBlink {
+    0% { border-color: #ffffff; }
+    50% { border-color: #000000; }
+    100% { border-color: #ffffff; }
+}
+
+/* ANIMACIONES */
+.card-vibrate {
+    animation: vibrate 0.3s infinite;
+}
+
+@keyframes vibrate {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    20% { transform: translate(-2px, 2px) rotate(-1deg); }
+    40% { transform: translate(-2px, -2px) rotate(1deg); }
+    60% { transform: translate(2px, 2px) rotate(0deg); }
+    80% { transform: translate(2px, -2px) rotate(1deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+.card-flip-anim {
+    animation: flipCard 0.8s ease-in-out forwards;
+}
+
+@keyframes flipCard {
+    0% { transform: scaleX(1); }
+    50% { transform: scaleX(0); }
+    100% { transform: scaleX(1); }
+}
+
+.exchange-vertical-down {
+    animation: moveVerticalDown 1.5s ease-in-out forwards;
+}
+
+@keyframes moveVerticalDown {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(60px) scale(1.1); }
+    100% { transform: translateY(0); }
+}
+
+.exchange-vertical-up {
+    animation: moveVerticalUp 1.5s ease-in-out forwards;
+}
+
+@keyframes moveVerticalUp {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-60px) scale(1.1); }
+    100% { transform: translateY(0); }
+}
+
+/* REVERSO DE CARTA */
+.card-back {
+    background-color: #dc2626;
+    border: 4px solid #ffffff;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 1.25rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    user-select: none;
+}
+
+/* ANVERSO POLLITO */
+.card-front-pollito {
+    background-color: #ffffff;
+    padding: 6px;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+}
+
+.card-inner-pollito {
+    background-color: #facc15;
+    height: 100%;
+    width: 100%;
+    border-radius: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px;
+    color: #1e293b;
+}
+
+/* ANVERSO BOMBA */
+.card-front-bomba {
+    background-color: #ffffff;
+    padding: 6px;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+}
+
+.card-inner-bomba {
+    background-color: #0284c7;
+    height: 100%;
+    width: 100%;
+    border-radius: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px;
+    color: #ffffff;
+}
+
+/* CARTA BLOQUEADA */
+.card-locked {
+    background-color: #1e293b;
+    filter: brightness(0.2) grayscale(1);
+    opacity: 0.6;
+}
+
+.card-locked:hover {
+    animation: vibrate 0.2s infinite;
+}
