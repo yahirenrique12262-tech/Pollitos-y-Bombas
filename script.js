@@ -297,7 +297,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Si es estricto el navegador, mostrar el botón de audio
     document.getElementById('audio-unlock-container').classList.remove('hidden');
     // El primer clic en cualquier parte activa el sonido
-    document.addEventListener('click', () => { if(!audioUnlocked) unlockAudioAndHide(); }, { once: true });
+    document.addEventListener('click', () => {
+        if(!audioUnlocked) unlockAudioAndHide();
+        if(window.matchMedia && window.matchMedia('(pointer: coarse)').matches) enterFullscreen();
+    }, { once: true });
 
     updateGlobalPoints();
     renderColorOptions();
@@ -309,6 +312,23 @@ document.addEventListener('DOMContentLoaded', () => {
         showSetupMenu();
     }
 });
+
+// Pantalla completa: oculta la barra del navegador en el celular
+function enterFullscreen() {
+    const el = document.documentElement;
+    const fn = el.requestFullscreen || el.webkitRequestFullscreen;
+    if(fn && !document.fullscreenElement && !document.webkitFullscreenElement) {
+        try { const p = fn.call(el); if(p && p.catch) p.catch(() => {}); } catch(_) {}
+    }
+}
+function toggleFullscreen() {
+    if(document.fullscreenElement || document.webkitFullscreenElement) {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    } else {
+        enterFullscreen();
+    }
+    playSFX('click');
+}
 
 function updateGlobalPoints() {
     document.getElementById('global-points').innerText = userData.points;
@@ -1005,34 +1025,88 @@ function closeTutorialRules() {
 
 // ====== MODO POLLITO EXPLOTADO ======
 const EX_COLS = 7, EX_ROWS = 9;
-const EX_LIVES = 5;               // vidas máximas
+const EX_LIVES = 5;               // vidas iniciales
+const EX_MAX_LIVES = 8;           // los corazones que cruzan se pueden acumular hasta este tope
 const EX_CHICK_SPEED = 4.2;       // casillas por segundo
 const EX_COIN_MULT = 1.6;         // multiplicador de velocidad al tomar la moneda
 const EX_HIT_RADIUS = 0.7;        // distancia de contacto bomba-pollito (en casillas)
 const EX_SECTION_TIME = 15;       // segundos en una sección para poder salir
 const EX_FINAL_TIME = 20;         // segundos que hay que resistir en la salida
 
-// MAPA (6 x 5): S = inicio, . = camino, E = salida (la más lejana; no se ve en el minimapa), # = sin sección
-// Las desviaciones son de una sola sección y tienen objeto: P = plato, H = corazón, C = moneda
-const EX_MAP = [
+// MAPA (6 x 5): S = inicio, . = camino, E = salida (siempre la última, abajo a la derecha; en el minimapa se ve en rojo), # = sin sección
+// Las desviaciones son de una sola sección y tienen objeto: P = plato, H = pollito enjaulado, C = moneda
+// El mapa se genera al azar en cada partida (exGenerateMap); este es el de respaldo
+const EX_MAP_BASE = [
     'S..P##',
     'H#.#H#',
     '#C...H',
     '##H#.#',
     '####.E'
 ];
+let EX_MAP = EX_MAP_BASE.slice();
 const EX_DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 const EX_OPP = { up: 'down', down: 'up', left: 'right', right: 'left' };
 const EX_ITEM_ICON = { P: 'fa-plate-wheat', H: 'fa-heart', C: 'fa-coins' };
 const EX_ITEM_COLOR = { P: '#e2e8f0', H: '#fb7185', C: '#facc15' };
+const EX_CAGE_HTML = '<span class="ex-cage"><i class="fa-solid fa-kiwi-bird"></i></span>';   // pollito enjaulado (objeto H)
 
 let exActive = false, exRAF = null, exLast = 0;
 let exChick = { x: 3.5, y: 4.5, face: 'up' };   // face = hacia dónde se mueve (el plato protege el lado opuesto)
 let exBombs = [], exQueue = [], exLives = EX_LIVES, exNextWave = 0;
-let exKeys = {}, exStick = null;
+let exKeys = {}, exStick = null, exPad = {};
 let exCell = { x: 0, y: 0 }, exSectionT = 0, exUnlocked = false, exFinal = false, exFinalT = EX_FINAL_TIME;
+let exHeartDone = new Set();   // secciones donde ya apareció su corazón garantizado
 let exSecT = {};   // segundos acumulados en cada sección (para no repetir la espera)
 let exVisited = new Set(), exTaken = new Set(), exHasPlate = false, exHasCoin = false;
+
+// Genera un mapa aleatorio: camino de S (arriba a la izquierda) a E (abajo a la derecha, siempre al final)
+// con desviaciones de una sola sección que contienen 1 plato, 1 moneda y 4 pollitos enjaulados
+function exGenerateMap() {
+    const W = EX_MAP_BASE[0].length, H = EX_MAP_BASE.length;
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const inb = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
+    const shuffle = a => { for(let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    for(let attempt = 0; attempt < 300; attempt++) {
+        const grid = Array.from({ length: H }, () => Array(W).fill('#'));
+        const path = [[0, 0]];
+        grid[0][0] = 'S';
+        const maxLen = 10 + Math.floor(Math.random() * 5);
+        const openNb = (x, y) => dirs.filter(([dx, dy]) => inb(x + dx, y + dy) && grid[y + dy][x + dx] !== '#').length;
+        const walk = () => {
+            const [cx, cy] = path[path.length - 1];
+            if(cx === W - 1 && cy === H - 1) return true;
+            if(path.length >= maxLen) return false;
+            for(const [dx, dy] of shuffle(dirs.slice())) {
+                const nx = cx + dx, ny = cy + dy;
+                if(!inb(nx, ny) || grid[ny][nx] !== '#') continue;
+                if(openNb(nx, ny) > 1) continue;   // el camino no se toca a sí mismo (solo la casilla anterior)
+                grid[ny][nx] = (nx === W - 1 && ny === H - 1) ? 'E' : '.';
+                path.push([nx, ny]);
+                if(walk()) return true;
+                path.pop();
+                grid[ny][nx] = '#';
+            }
+            return false;
+        };
+        if(!walk()) continue;
+
+        // Desviaciones: casillas vacías pegadas a una sola sección (y lejos de la salida)
+        const cand = [];
+        for(let y = 0; y < H; y++) for(let x = 0; x < W; x++) if(grid[y][x] === '#') cand.push([x, y]);
+        shuffle(cand);
+        const items = ['P', 'C', 'H', 'H', 'H', 'H'];
+        let n = 0;
+        for(const [x, y] of cand) {
+            if(n >= items.length) break;
+            if(openNb(x, y) !== 1) continue;
+            if(dirs.some(([dx, dy]) => x + dx === W - 1 && y + dy === H - 1)) continue;
+            grid[y][x] = items[n++];
+        }
+        if(n < items.length) continue;
+        return grid.map(r => r.join(''));
+    }
+    return EX_MAP_BASE.slice();
+}
 
 function exMapCell(x, y) { return (EX_MAP[y] || '')[x] || '#'; }
 function exOpen(x, y) { return exMapCell(x, y) !== '#'; }
@@ -1044,9 +1118,10 @@ function stopExploded() {
 
 function resetExplodedScreen() {
     stopExploded();
-    exBombs = []; exQueue = []; exKeys = {}; exStick = null;
+    EX_MAP = exGenerateMap();   // mapa nuevo en cada partida
+    exBombs = []; exQueue = []; exKeys = {}; exStick = null; exPad = {};
     exLives = EX_LIVES; exHasPlate = false; exHasCoin = false;
-    exTaken = new Set(); exVisited = new Set(['0,0']); exSecT = {};
+    exTaken = new Set(); exVisited = new Set(['0,0']); exSecT = {}; exHeartDone = new Set();
     exCell = { x: 0, y: 0 };
     exChick = { x: EX_COLS / 2, y: EX_ROWS / 2, face: 'up' };
     exLast = performance.now();
@@ -1086,8 +1161,8 @@ function setupExplodedSection(fromDir) {
     const key = exCell.x + ',' + exCell.y;
     if('PHC'.includes(ch) && !exTaken.has(key)) {
         item.style.display = 'flex';
-        item.style.color = EX_ITEM_COLOR[ch];
-        item.innerHTML = `<i class="fa-solid ${EX_ITEM_ICON[ch]}"></i>`;
+        item.style.color = ch === 'H' ? '#fde047' : EX_ITEM_COLOR[ch];
+        item.innerHTML = ch === 'H' ? EX_CAGE_HTML : `<i class="fa-solid ${EX_ITEM_ICON[ch]}"></i>`;
     } else {
         item.style.display = 'none';
     }
@@ -1125,8 +1200,8 @@ function renderExplodedMap() {
         if(ch === '#') { html += '<span class="ex-mc ex-mc-wall"></span>'; return; }
         const here = exCell.x === x && exCell.y === y;
         const vis = exVisited.has(x + ',' + y);
-        // la salida no se distingue en el mapa hasta que llegas a ella
-        const cls = 'ex-mc ' + (ch === 'E' && vis ? 'ex-mc-exit' : vis ? 'ex-mc-vis' : 'ex-mc-open') + (here ? ' ex-mc-here' : '');
+        // la salida siempre se ve en rojo en el mapa
+        const cls = 'ex-mc ' + (ch === 'E' ? 'ex-mc-exit' : vis ? 'ex-mc-vis' : 'ex-mc-open') + (here ? ' ex-mc-here' : '');
         // los objetos sí se ven (hasta que los tomas)
         const dot = ('PHC'.includes(ch) && !exTaken.has(x + ',' + y)) ? `<i class="ex-md" style="background:${EX_ITEM_COLOR[ch]}"></i>` : '';
         html += `<span class="${cls}">${dot}</span>`;
@@ -1135,8 +1210,9 @@ function renderExplodedMap() {
 }
 
 function updateExplodedHUD() {
-    document.getElementById('ex-lives').innerHTML = Array.from({ length: EX_LIVES }, (_, i) =>
-        `<span class="ex-life-seg ${i < exLives ? '' : 'ex-life-off'}"></span>`).join('');
+    const total = Math.max(EX_LIVES, exLives);
+    document.getElementById('ex-lives').innerHTML = Array.from({ length: total }, (_, i) =>
+        `<span class="ex-life-seg ${i < exLives ? (i >= EX_LIVES ? 'ex-life-bonus' : '') : 'ex-life-off'}"></span>`).join('');
     document.getElementById('ex-inv-plate').style.display = exHasPlate ? 'inline' : 'none';
     document.getElementById('ex-inv-coin').style.display = exHasCoin ? 'inline' : 'none';
 }
@@ -1147,11 +1223,11 @@ function updateExplodedChick() {
     ch.style.top = ((exChick.y - 0.5) * 100 / EX_ROWS) + '%';
 }
 
-// El plato protege el lado contrario a la dirección en que se mueve el pollito
+// El plato protege el lado hacia el que se mueve el pollito
 function updateExplodedPlate() {
     const p = document.getElementById('ex-plate');
     p.style.display = exHasPlate ? 'block' : 'none';
-    p.className = 'ex-plate ex-plate-' + EX_OPP[exChick.face];
+    p.className = 'ex-plate ex-plate-' + exChick.face;
 }
 
 function exPopup(text, color) {
@@ -1170,17 +1246,23 @@ function exWaveParams() {
     if(exFinal) return { count: 4, travel: 1.5, interval: 1.6, spread: 0.8, aim: 'mixed' };
     const depth = exVisited.size;
     const travel = Math.max(2.0, 2.6 - depth * 0.06);
-    const count = exSectionT < 5 ? 1 : (exSectionT < 10 ? 2 : 3);
+    let count = exSectionT < 5 ? 1 : (exSectionT < 10 ? 2 : 3);
+    if(depth >= 3) count = Math.max(count, 2); // desde la tercera sección, mínimo 2 bombas a la vez
     return { count, travel, interval: 2.4, spread: 1.0, aim: 'chick' };
 }
 
 function exQueueWave(now) {
     const p = exWaveParams();
+    const key = exCell.x + ',' + exCell.y;
+    let needHeart = !exHeartDone.has(key) && exSectionT >= 6;   // al menos un corazón por sección
     for(let i = 0; i < p.count; i++) {
         const delay = p.count > 1 ? (i * p.spread / (p.count - 1)) * 1000 : 0;
         let aim = p.aim;
         if(aim === 'mixed') aim = i === 0 ? 'chick' : 'random';
-        exQueue.push({ t: now + delay, aim, travel: p.travel });
+        let heart = Math.random() < 0.12;                       // de vez en cuando, un corazón en lugar de bomba
+        if(!heart && needHeart && i === p.count - 1) heart = true;
+        if(heart) { exHeartDone.add(key); needHeart = false; }
+        exQueue.push({ t: now + delay, aim, travel: p.travel, heart });
     }
     exNextWave = now + p.interval * 1000;
 }
@@ -1194,17 +1276,17 @@ function spawnExplodedBomb(q) {
     else                { x = -m; y = Math.random() * EX_ROWS; }
 
     let tx, ty;
-    if(q.aim === 'chick') { tx = exChick.x; ty = exChick.y; }
+    if(q.aim === 'chick' || q.heart) { tx = exChick.x; ty = exChick.y; }
     else                  { tx = Math.random() * EX_COLS; ty = Math.random() * EX_ROWS; }
 
     const dx = tx - x, dy = ty - y, d = Math.hypot(dx, dy) || 1;
-    const speed = EX_ROWS / q.travel; // casillas por segundo: cruza la pantalla en "travel" segundos
+    const speed = EX_ROWS / q.travel * (q.heart ? 0.6 : 1); // casillas por segundo: cruza la pantalla en "travel" segundos
 
     const el = document.createElement('div');
-    el.className = 'ex-bomb';
-    el.innerHTML = '<i class="fa-solid fa-bomb"></i>';
+    el.className = q.heart ? 'ex-bomb ex-heart' : 'ex-bomb';
+    el.innerHTML = q.heart ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-solid fa-bomb"></i>';
     document.getElementById('ex-bombs').appendChild(el);
-    const b = { el, x, y, vx: dx / d * speed, vy: dy / d * speed };
+    const b = { el, x, y, vx: dx / d * speed, vy: dy / d * speed, heart: !!q.heart };
     exBombs.push(b);
     placeExplodedBomb(b);
 }
@@ -1214,14 +1296,24 @@ function placeExplodedBomb(b) {
     b.el.style.top = ((b.y - 0.5) * 100 / EX_ROWS) + '%';
 }
 
+// El pollito enjaulado se libera: la jaula se abre y el pollito sale saltando
+function exFreeChick() {
+    const d = document.createElement('div');
+    d.className = 'ex-freed';
+    d.innerHTML = '<span class="ex-cage ex-cage-open"></span><i class="fa-solid fa-kiwi-bird"></i>';
+    document.getElementById('ex-field').appendChild(d);
+    setTimeout(() => d.remove(), 900);
+}
+
 function exPickItem() {
     const ch = exMapCell(exCell.x, exCell.y), key = exCell.x + ',' + exCell.y;
     if(!'PHC'.includes(ch) || exTaken.has(key)) return;
     if(Math.hypot(exChick.x - EX_COLS / 2, exChick.y - EX_ROWS / 2) > 0.8) return;
     if(ch === 'H') {
-        if(exLives >= EX_LIVES) return; // vida llena: el corazón se queda para después
+        if(exLives >= EX_LIVES) return; // vida llena: el pollito sigue enjaulado para después
         exLives++;
-        exPopup('+1 vida', '#fb7185');
+        exPopup('¡Liberado! +1 vida', '#fde047');
+        exFreeChick();
     } else if(ch === 'P') {
         exHasPlate = true;
         exPopup('¡Plato!', '#e2e8f0');
@@ -1260,8 +1352,8 @@ function explodedLoop(t) {
     }
 
     // Movimiento libre del pollito (teclado o arrastrando el dedo/mouse)
-    let ix = (exKeys.arrowright || exKeys.d ? 1 : 0) - (exKeys.arrowleft || exKeys.a ? 1 : 0);
-    let iy = (exKeys.arrowdown || exKeys.s ? 1 : 0) - (exKeys.arrowup || exKeys.w ? 1 : 0);
+    let ix = (exKeys.arrowright || exKeys.d || exPad.right ? 1 : 0) - (exKeys.arrowleft || exKeys.a || exPad.left ? 1 : 0);
+    let iy = (exKeys.arrowdown || exKeys.s || exPad.down ? 1 : 0) - (exKeys.arrowup || exKeys.w || exPad.up ? 1 : 0);
     if(exStick) { ix += exStick.vx; iy += exStick.vy; }
     const mag = Math.hypot(ix, iy);
     if(mag > 0.2) {
@@ -1310,10 +1402,19 @@ function explodedLoop(t) {
 
         const dx = b.x - exChick.x, dy = b.y - exChick.y;
         if(Math.hypot(dx, dy) < EX_HIT_RADIUS) {
+            if(b.heart) {                                       // corazón: +1 vida (se acumula)
+                exBombs.splice(i, 1);
+                b.el.remove();
+                exLives = Math.min(EX_MAX_LIVES, exLives + 1);
+                playSFX('punto');
+                exPopup('+1 vida', '#fb7185');
+                updateExplodedHUD();
+                continue;
+            }
             // lado del pollito por el que llegó la bomba
             const side = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
             exBombs.splice(i, 1);
-            if(exHasPlate && side === EX_OPP[exChick.face]) {   // el plato (lado opuesto al movimiento) la desactiva
+            if(exHasPlate && side === exChick.face) {   // el plato (lado hacia donde te mueves) la desactiva
                 b.el.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i>';
                 playSFX('desactivacion');
                 exPopup('¡Desactivada!', '#6ee7b7');
@@ -1395,11 +1496,26 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('keyup', e => { exKeys[e.key.toLowerCase()] = false; });
 
+// Botones táctiles de dirección
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.ex-dbtn').forEach(btn => {
+        const dir = btn.dataset.dir;
+        btn.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            exPad[dir] = true;
+            try { btn.setPointerCapture(e.pointerId); } catch(_) {}
+        });
+        ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => btn.addEventListener(ev, () => { exPad[dir] = false; }));
+        btn.addEventListener('contextmenu', e => e.preventDefault());
+    });
+});
+
 // ====== MODO KABOOM ======
 let kaboomBombsHit = 0;
 let kaboomScore = 0;
 let kaboomCharges = 0;      // usos de "Desactivar" disponibles (1 por cada 5 pollitos recogidos)
 let kaboomLastCollect = 0;  // momento en que se recogió el último pollito
+const KABOOM_SIZE = 56; // diámetro de los círculos (px)
 let kaboomRunnerAcc = 0, kaboomRunnerNext = 2000, kaboomNextRush = 25, kaboomRushT = 0, kaboomRushChickAcc = 0, kaboomRushBombAcc = 0;
 let kaboomBombAcc = 0;      // milisegundos acumulados para la siguiente bomba (1 cada 7 s)
 let kaboomSpawnAcc = 0;     // milisegundos acumulados para la siguiente aparición
@@ -1433,7 +1549,7 @@ function startKaboomGame() {
     }, 1000);
 
     // Al iniciar, varios pollitos salen corriendo hacia el lado opuesto
-    for(let i = 0; i < 6; i++) createKaboomChick();
+    for(let i = 0; i < 10; i++) createKaboomChick();
 
     kaboomLast = performance.now();
     kaboomRAF = requestAnimationFrame(kaboomLoop);
@@ -1442,10 +1558,10 @@ function startKaboomGame() {
 // Intervalo de aparición de pollitos (ms): aparecen constantemente y cada vez más seguido
 function getKaboomSpawnRate() {
     const elapsed = 120 - timeLeft;
-    if(elapsed >= 45) return 350;
-    if(elapsed >= 30) return 450;
-    if(elapsed >= 15) return 550;
-    return 700;
+    if(elapsed >= 45) return 260;
+    if(elapsed >= 30) return 300;
+    if(elapsed >= 15) return 350;
+    return 450;
 }
 
 // Movimiento: pollitos cruzan la pantalla, bombas persiguen al pollito más cercano y lo eliminan
@@ -1454,7 +1570,7 @@ function kaboomLoop(t) {
     const dt = Math.min((t - kaboomLast) / 1000, 0.05);
     kaboomLast = t;
     const W = area.clientWidth, H = area.clientHeight;
-    const maxX = W - 40, maxY = H - 40;
+    const maxX = W - KABOOM_SIZE, maxY = H - KABOOM_SIZE;
 
     // Pollitos constantes; una bomba nueva cada 3 segundos (máximo 4 persiguiendo a la vez)
     kaboomSpawnAcc += dt * 1000;
@@ -1487,7 +1603,7 @@ function kaboomLoop(t) {
         kaboomRushT -= dt;
         kaboomRushChickAcc += dt * 1000;
         kaboomRushBombAcc += dt * 1000;
-        while(kaboomRushChickAcc >= 120) { kaboomRushChickAcc -= 120; createKaboomChick(); }
+        while(kaboomRushChickAcc >= 80) { kaboomRushChickAcc -= 80; createKaboomChick(); }
         while(kaboomRushBombAcc >= 350) { kaboomRushBombAcc -= 350; createKaboomRunnerBomb(); }
     }
 
@@ -1504,7 +1620,7 @@ function kaboomLoop(t) {
                 if(d < best) { best = d; target = p; }
             });
             if(target) {
-                if(best < 28) {
+                if(best < 34) {
                     target.remove(); // la bomba hace desaparecer al pollito (la bomba se queda)
                 } else {
                     c._x += (target._x - c._x) / best * c._speed * dt;
@@ -1518,8 +1634,8 @@ function kaboomLoop(t) {
         } else { // pollito: corre en línea recta hasta salir por el lado opuesto
             c._x += c._vx * dt;
             c._y += c._vy * dt;
-            if((c._vx > 0 && c._x > W) || (c._vx < 0 && c._x < -40) ||
-               (c._vy > 0 && c._y > H) || (c._vy < 0 && c._y < -40)) {
+            if((c._vx > 0 && c._x > W) || (c._vx < 0 && c._x < -KABOOM_SIZE) ||
+               (c._vy > 0 && c._y > H) || (c._vy < 0 && c._y < -KABOOM_SIZE)) {
                 c.remove();
                 return;
             }
@@ -1532,7 +1648,7 @@ function kaboomLoop(t) {
 
 function createKaboomChick() {
     const area = document.getElementById('kaboom-area');
-    const W = area.clientWidth, H = area.clientHeight, size = 40;
+    const W = area.clientWidth, H = area.clientHeight, size = KABOOM_SIZE;
     const dir = Math.floor(Math.random() * 4); // 0 izq→der, 1 der→izq, 2 arriba→abajo, 3 abajo→arriba
     const speed = 320 + Math.random() * 200;     // píxeles por segundo
     let x, y, vx = 0, vy = 0;
@@ -1542,7 +1658,7 @@ function createKaboomChick() {
     else               { y = H;     x = Math.random() * (W - size); vy = -speed; }
 
     const c = document.createElement('div');
-    c.className = 'kaboom-circle w-10 h-10 bg-yellow-400 text-slate-900';
+    c.className = 'kaboom-circle w-14 h-14 bg-yellow-400 text-slate-900';
     c.innerHTML = `<i class="fa-solid fa-kiwi-bird" style="${vx < 0 ? 'transform:scaleX(-1)' : ''}"></i>`;
     c._bomb = false;
     c._x = x; c._y = y; c._vx = vx; c._vy = vy;
@@ -1565,7 +1681,7 @@ function createKaboomChick() {
 
 function createKaboomBomb() {
     const area = document.getElementById('kaboom-area');
-    const W = area.clientWidth, H = area.clientHeight, size = 40;
+    const W = area.clientWidth, H = area.clientHeight, size = KABOOM_SIZE;
     const side = Math.floor(Math.random() * 4); // la bomba aparece por un borde al azar
     let x, y;
     if(side === 0)      { x = 0;         y = Math.random() * (H - size); }
@@ -1574,11 +1690,11 @@ function createKaboomBomb() {
     else                { y = H - size;  x = Math.random() * (W - size); }
 
     const c = document.createElement('div');
-    c.className = 'kaboom-circle w-10 h-10 bg-blue-500 text-white';
+    c.className = 'kaboom-circle w-14 h-14 bg-blue-500 text-white';
     c.innerHTML = '<i class="fa-solid fa-bomb"></i>';
     c._bomb = true;
     c._x = x; c._y = y;
-    c._speed = 520 + (120 - timeLeft) * 1.5; // velocidad de persecución muy rápida (px por segundo), sube con el tiempo
+    c._speed = 170 + (120 - timeLeft) * 1.0; // velocidad de persecución muy rápida (px por segundo), sube con el tiempo
     c._vx = (Math.random() < 0.5 ? -1 : 1) * (60 + Math.random() * 60);
     c._vy = (Math.random() < 0.5 ? -1 : 1) * 60;
     c.style.left = x + 'px';
@@ -1599,7 +1715,7 @@ function createKaboomBomb() {
 // Bomba que cruza la pantalla en línea recta, igual que los pollitos
 function createKaboomRunnerBomb() {
     const area = document.getElementById('kaboom-area');
-    const W = area.clientWidth, H = area.clientHeight, size = 40;
+    const W = area.clientWidth, H = area.clientHeight, size = KABOOM_SIZE;
     const dir = Math.floor(Math.random() * 4); // 0 izq→der, 1 der→izq, 2 arriba→abajo, 3 abajo→arriba
     const speed = 320 + Math.random() * 200;
     let x, y, vx = 0, vy = 0;
@@ -1609,7 +1725,7 @@ function createKaboomRunnerBomb() {
     else               { y = H;     x = Math.random() * (W - size); vy = -speed; }
 
     const c = document.createElement('div');
-    c.className = 'kaboom-circle w-10 h-10 bg-blue-500 text-white';
+    c.className = 'kaboom-circle w-14 h-14 bg-blue-500 text-white';
     c.innerHTML = '<i class="fa-solid fa-bomb"></i>';
     c._bomb = true; c._runner = true;
     c._x = x; c._y = y; c._vx = vx; c._vy = vy;
@@ -1636,8 +1752,8 @@ function kaboomExplodeAt(x, y) {
         .slice(0, 4).forEach(c => c.remove());
     const fx = document.createElement('div');
     fx.className = 'kaboom-boom';
-    fx.style.left = (x + 20) + 'px';
-    fx.style.top = (y + 20) + 'px';
+    fx.style.left = (x + KABOOM_SIZE / 2) + 'px';
+    fx.style.top = (y + KABOOM_SIZE / 2) + 'px';
     fx.innerHTML = '<i class="fa-solid fa-burst"></i>';
     area.appendChild(fx);
     setTimeout(() => fx.remove(), 450);

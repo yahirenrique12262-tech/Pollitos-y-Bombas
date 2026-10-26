@@ -2,7 +2,11 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0b0f19">
     <title>Pollitos y Bombas</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -57,6 +61,9 @@
             </button>
             <button onclick="toggleStore()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2 py-1.5 rounded-lg text-[10px] shadow-lg flex items-center gap-1 transition">
                 <i class="fa-solid fa-store"></i> Tienda
+            </button>
+            <button onclick="toggleFullscreen()" title="Pantalla completa" class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 font-bold px-2 py-1.5 rounded-lg text-[10px] shadow-lg flex items-center gap-1 transition">
+                <i class="fa-solid fa-expand"></i>
             </button>
         </div>
     </header>
@@ -234,39 +241,51 @@
         </section>
 
         <!-- 4. MODO POLLITO EXPLOTADO -->
-        <section id="screen-explotado" class="hidden relative w-full max-w-md bg-slate-900 border-2 border-indigo-500 rounded-2xl p-3 shadow-2xl flex flex-col items-center gap-2 overflow-hidden">
-            <div class="w-full flex justify-between items-start gap-2">
-                <div class="flex flex-col gap-1.5 text-[10px] font-pixel">
-                    <div id="ex-timer" class="text-indigo-300">Sección: 15s</div>
-                    <div id="ex-lives" class="ex-lives"></div>
-                    <div class="flex gap-2 text-[12px]">
-                        <span id="ex-inv-plate" class="ex-inv" style="display:none;color:#e2e8f0"><i class="fa-solid fa-plate-wheat"></i></span>
-                        <span id="ex-inv-coin" class="ex-inv" style="display:none;color:#facc15"><i class="fa-solid fa-coins"></i></span>
+        <section id="screen-explotado" class="hidden relative w-full max-w-md bg-slate-900 border-2 border-indigo-500 rounded-2xl p-3 shadow-2xl overflow-hidden">
+            <div class="ex-layout">
+                <div class="ex-hud">
+                    <div class="flex flex-col gap-1.5 text-[10px] font-pixel">
+                        <div id="ex-timer" class="text-indigo-300">Sección: 15s</div>
+                        <div id="ex-lives" class="ex-lives"></div>
+                        <div class="flex gap-2 text-[12px]">
+                            <span id="ex-inv-plate" class="ex-inv" style="display:none;color:#e2e8f0"><i class="fa-solid fa-plate-wheat"></i></span>
+                            <span id="ex-inv-coin" class="ex-inv" style="display:none;color:#facc15"><i class="fa-solid fa-coins"></i></span>
+                        </div>
+                    </div>
+                    <div id="ex-map" class="ex-map"></div>
+                </div>
+
+                <div class="ex-fieldwrap">
+                    <div class="ex-progress"><div id="ex-progress-fill"></div></div>
+                    <div id="ex-field" class="ex-field">
+                        <div id="ex-edge-up" class="ex-edge ex-edge-up"><i class="fa-solid fa-angles-up"></i></div>
+                        <div id="ex-edge-down" class="ex-edge ex-edge-down"><i class="fa-solid fa-angles-down"></i></div>
+                        <div id="ex-edge-left" class="ex-edge ex-edge-left"><i class="fa-solid fa-angles-left"></i></div>
+                        <div id="ex-edge-right" class="ex-edge ex-edge-right"><i class="fa-solid fa-angles-right"></i></div>
+                        <div id="ex-item" class="ex-item" style="display:none"></div>
+                        <div id="ex-bombs"></div>
+                        <div id="ex-chick" class="ex-chick">
+                            <i class="fa-solid fa-kiwi-bird"></i>
+                            <div id="ex-plate" class="ex-plate ex-plate-down" style="display:none"></div>
+                        </div>
                     </div>
                 </div>
-                <div id="ex-map" class="ex-map"></div>
-            </div>
-            <div class="ex-progress"><div id="ex-progress-fill"></div></div>
 
-            <div id="ex-field" class="ex-field">
-                <div id="ex-edge-up" class="ex-edge ex-edge-up"><i class="fa-solid fa-angles-up"></i></div>
-                <div id="ex-edge-down" class="ex-edge ex-edge-down"><i class="fa-solid fa-angles-down"></i></div>
-                <div id="ex-edge-left" class="ex-edge ex-edge-left"><i class="fa-solid fa-angles-left"></i></div>
-                <div id="ex-edge-right" class="ex-edge ex-edge-right"><i class="fa-solid fa-angles-right"></i></div>
-                <div id="ex-item" class="ex-item" style="display:none"></div>
-                <div id="ex-bombs"></div>
-                <div id="ex-chick" class="ex-chick">
-                    <i class="fa-solid fa-kiwi-bird"></i>
-                    <div id="ex-plate" class="ex-plate ex-plate-down" style="display:none"></div>
+                <div class="ex-controls">
+                    <p id="ex-hint" class="text-[9px] text-indigo-200 text-center">Botones, deslizar en el campo, o flechas/WASD</p>
+                    <div class="ex-dpad">
+                        <button class="ex-dbtn ex-d-up" data-dir="up" aria-label="Arriba"><i class="fa-solid fa-chevron-up"></i></button>
+                        <button class="ex-dbtn ex-d-left" data-dir="left" aria-label="Izquierda"><i class="fa-solid fa-chevron-left"></i></button>
+                        <button class="ex-dbtn ex-d-down" data-dir="down" aria-label="Abajo"><i class="fa-solid fa-chevron-down"></i></button>
+                        <button class="ex-dbtn ex-d-right" data-dir="right" aria-label="Derecha"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                    <button onclick="returnToMenu()" class="text-[9px] text-slate-400 underline">Volver al menú</button>
                 </div>
             </div>
-
-            <p id="ex-hint" class="text-[9px] text-indigo-200 text-center min-h-[14px]">Arrastra el dedo o usa flechas/WASD para moverte</p>
-            <button onclick="returnToMenu()" class="text-[9px] text-slate-400 underline">Volver al menú</button>
 
             <div id="ex-intro" class="absolute inset-0 bg-slate-900/95 z-20 flex flex-col items-center justify-center p-4 text-center overflow-y-auto">
                 <h2 class="text-lg font-pixel text-indigo-400 mb-4">POLLITO EXPLOTADO</h2>
-                <p class="text-[10px] text-white mb-6 leading-loose">Mueve al pollito arrastrando el dedo. Esquiva las bombas: si te tocan pierdes 1 de 5 vidas.<br>Aguanta 15 segundos en cada sección nueva para poder avanzar por un extremo hacia otra sección del mapa (arriba a la derecha). Las secciones que ya visitaste se recorren sin esperar.<br>La salida no aparece en el mapa: está lo más lejos posible. Llega ahí y resiste 20 segundos para ganar.<br>En los callejones hay objetos: <i class="fa-solid fa-plate-wheat"></i> plato (te protege por el lado contrario a donde te mueves), <i class="fa-solid fa-heart text-rose-400"></i> corazón (+1 vida) y <i class="fa-solid fa-coins text-yellow-400"></i> moneda (más velocidad, solo hay una).</p>
+                <p class="text-[10px] text-white mb-6 leading-loose">Mueve al pollito con los botones de dirección (o deslizando en el campo). Esquiva las bombas: si te tocan pierdes 1 de 5 vidas.<br>Aguanta 15 segundos en cada sección nueva para poder avanzar por un extremo hacia otra sección del mapa (arriba a la derecha). Las secciones que ya visitaste se recorren sin esperar.<br>La salida está marcada en rojo en el mapa y siempre queda al final. El mapa cambia en cada partida. Llega ahí y resiste 20 segundos para ganar.<br>En los callejones hay objetos: <i class="fa-solid fa-plate-wheat"></i> plato (te protege por el lado hacia donde te mueves), <i class="fa-solid fa-kiwi-bird text-yellow-300"></i> pollito enjaulado (libéralo para ganar +1 vida) y <i class="fa-solid fa-coins text-yellow-400"></i> moneda (más velocidad, solo hay una).<br>De vez en cuando cruzan corazones en lugar de bombas, al menos uno por sección: tócalos para ganar 1 vida (se acumulan).</p>
                 <button onclick="startExplodedGame()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-2 rounded-xl text-xs font-pixel mb-2">¿Listo?</button>
                 <button onclick="returnToMenu()" class="text-[9px] text-slate-400 underline mt-4">Volver al menú</button>
             </div>
@@ -282,7 +301,7 @@
             
             <div id="kaboom-intro" class="absolute inset-0 bg-slate-900/90 z-20 flex flex-col items-center justify-center p-4 text-center">
                 <h2 class="text-2xl font-pixel text-orange-500 mb-4">KABOOM</h2>
-                <p class="text-[10px] text-white mb-6 leading-loose">Toca los pollitos antes de que escapen.<br>Cada 3 segundos aparece una bomba (máximo 4 a la vez) que persigue muy rápido a los pollitos y no desaparece sola.<br>También cruzan bombas al azar, y cada 25 segundos llega una OLEADA de pollitos y bombas.<br>Si tocas una bomba explota y borra a los 4 pollitos más cercanos.<br>Cada 5 pollitos puedes usar DESACTIVAR para borrar todas las bombas.<br>Ganas 1 punto global por cada 5 pollitos capturados.<br>Si tocas 3 bombas o pasas 15 segundos sin atrapar un pollito, pierdes.</p>
+                <p class="text-[10px] text-white mb-6 leading-loose">Toca los pollitos antes de que escapen.<br>Cada 3 segundos aparece una bomba (máximo 4 a la vez) que persigue a los pollitos sin parar y no desaparece sola.<br>También cruzan bombas al azar, y cada 25 segundos llega una OLEADA de pollitos y bombas.<br>Si tocas una bomba explota y borra a los 4 pollitos más cercanos.<br>Cada 5 pollitos puedes usar DESACTIVAR para borrar todas las bombas.<br>Ganas 1 punto global por cada 5 pollitos capturados.<br>Si tocas 3 bombas o pasas 15 segundos sin atrapar un pollito, pierdes.</p>
                 <button onclick="startKaboomGame()" class="bg-orange-600 hover:bg-orange-500 text-white font-bold px-6 py-2 rounded-xl text-xs font-pixel mb-2">¿Listo?</button>
                 <button onclick="returnToMenu()" class="text-[9px] text-slate-400 underline mt-4">Volver al menú</button>
             </div>
