@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0b0f19">
+    <title>Pollitos y Bombas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col justify-between overflow-x-hidden select-none">
+
+    <!-- AUDIO -->
+    <audio id="bgm-menu" loop src="audio/menu.mp3"></audio>
+    <audio id="bgm-facil" loop src="audio/facil.mp3"></audio>
+    <audio id="bgm-normal" loop src="audio/normal.mp3"></audio>
+    <audio id="bgm-dificil" loop src="audio/dificil.mp3"></audio>
+    <audio id="bgm-tutorial" loop src="audio/tutorial.mp3"></audio>
+    <audio id="bgm-supervivencia" loop src="audio/supervivencia.mp3"></audio>
+    <audio id="bgm-moneda" loop src="audio/moneda.mp3"></audio>
+    <audio id="bgm-kaboom" loop src="audio/kaboom.mp3"></audio>
+    <audio id="sfx-click" src="audio/click.mp3"></audio>
+    <audio id="sfx-punto" src="audio/punto.mp3"></audio>
+    <audio id="sfx-explosion" src="audio/explosion.mp3"></audio>
+    <audio id="sfx-desactivacion" src="audio/desactivacion.mp3"></audio>
+
+    <!-- PANTALLA INTRODUCTORIA DE 3 SEGUNDOS -->
+    <div id="intro-screen" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center">
+        <h1 class="font-pixel text-2xl md:text-5xl text-center leading-loose">
+            <span class="text-yellow-400">p<i class="fa-solid fa-egg text-white"></i>llit<i class="fa-solid fa-egg text-white"></i>s</span> 
+            <span class="text-white text-lg md:text-2xl mx-2">y</span> 
+            <span class="text-blue-500">b<i class="fa-solid fa-bomb text-white animate-pulse"></i>mbas</span>
+        </h1>
+    </div>
+
+    <!-- BOTÓN PARA ACTIVAR EL SONIDO AL INICIO (Para navegadores estrictos) -->
+    <div id="audio-unlock-container" class="fixed top-4 left-4 z-40 hidden">
+        <button onclick="unlockAudioAndHide()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-xl text-[10px] font-pixel shadow-2xl animate-bounce border-2 border-white">
+            <i class="fa-solid fa-volume-high"></i> Presiona aquí
+        </button>
+    </div>
+
+    <!-- ENCABEZADO -->
+    <header class="p-3 bg-slate-950/80 backdrop-blur border-b border-amber-500/30 flex justify-between items-center z-20">
+        <div>
+            <h1 class="font-pixel text-amber-400 text-xs md:text-lg flex items-center gap-2">
+                <i class="fa-solid fa-egg text-yellow-400"></i> Pollitos y Bombas
+            </h1>
+        </div>
+        <div class="flex items-center gap-2">
+            <div class="bg-slate-800 text-amber-300 font-pixel text-[10px] px-3 py-1.5 rounded-lg border border-amber-500/40">
+                Puntos: <span id="global-points">0</span>
+            </div>
+            <button onclick="returnToMenu()" class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 font-bold px-2 py-1.5 rounded-lg text-[10px] shadow-lg flex items-center gap-1 transition">
+                <i class="fa-solid fa-house"></i> Menú
+            </button>
+            <button onclick="toggleStore()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2 py-1.5 rounded-lg text-[10px] shadow-lg flex items-center gap-1 transition">
+                <i class="fa-solid fa-store"></i> Tienda
+            </button>
+            <button onclick="toggleFullscreen()" title="Pantalla completa" class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 font-bold px-2 py-1.5 rounded-lg text-[10px] shadow-lg flex items-center gap-1 transition">
+                <i class="fa-solid fa-expand"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 relative flex items-center justify-center p-2 md:p-4">
+
+        <!-- 1. SOLICITUD DE NOMBRE INICIAL -->
+        <section id="screen-name-input" class="hidden w-full max-w-md bg-slate-800 border-2 border-amber-500/50 rounded-2xl p-6 text-center shadow-2xl">
+            <h2 class="text-xl font-bold text-amber-400 font-pixel mb-4">¿Quién eres?</h2>
+            <input type="text" id="input-name" placeholder="Escribe tu nombre..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-amber-400 mb-4 text-center">
+            <button onclick="saveNameAndProceed()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-2 rounded-xl text-sm font-pixel w-full">Continuar</button>
+        </section>
+
+        <!-- 2. MENÚ PRINCIPAL (CONFIGURACIÓN DE AVATAR Y MODOS) -->
+        <section id="screen-setup" class="hidden w-full max-w-4xl bg-slate-800/90 border-2 border-amber-500/50 rounded-2xl p-4 shadow-2xl backdrop-blur-md grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            <div class="md:col-span-2 flex flex-col h-full">
+                <div class="text-center mb-2">
+                    <h2 class="text-lg font-bold text-amber-400 font-pixel mb-1">¡Bienvenido <span id="display-welcome-name"></span>!</h2>
+                    <div id="motivation-container" class="bg-slate-900/80 border border-slate-700 p-2 rounded-lg text-[10px] text-amber-200 italic mb-2 min-h-[40px] flex items-center justify-center text-center"></div>
+                    <!-- CONTADOR DE VICTORIAS Y RACHAS -->
+                    <div class="grid grid-cols-4 gap-1 text-[8px] font-pixel text-center">
+                        <div class="bg-slate-950/70 border border-emerald-500/30 p-1 rounded text-emerald-400">Fácil: <br><span id="stat-facil">0</span></div>
+                        <div class="bg-slate-950/70 border border-amber-500/30 p-1 rounded text-amber-400">Medio: <br><span id="stat-normal">0</span></div>
+                        <div class="bg-slate-950/70 border border-rose-500/30 p-1 rounded text-rose-400">Difícil: <br><span id="stat-dificil">0</span></div>
+                        <div class="bg-slate-950/70 border border-purple-500/30 p-1 rounded text-purple-400">Superv: <br><span id="stat-super">0</span> (Max: <span id="stat-super-streak">0</span>)</div>
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto pr-2 space-y-3 mt-2">
+                    <!-- Profesión (Opcional) -->
+                    <div>
+                        <label class="block text-[9px] font-bold uppercase text-amber-300 mb-1">Profesión (Opcional)</label>
+                        <input type="text" id="input-profession" placeholder="Ej: Ing. Industrial" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-amber-400">
+                    </div>
+
+                    <!-- Color del Avatar -->
+                    <div>
+                        <label class="block text-[9px] font-bold uppercase text-amber-300 mb-1">Color del Pollito</label>
+                        <div class="flex flex-wrap gap-1">
+                            <!-- Inyectado por JS -->
+                            <div id="color-options-container" class="flex flex-wrap gap-1"></div>
+                        </div>
+                    </div>
+
+                    <!-- Siluetas de Animales (Desbloqueables) -->
+                    <div>
+                        <label class="block text-[9px] font-bold uppercase text-amber-300 mb-1">Silueta de Animal</label>
+                        <div id="avatar-drawer" class="grid grid-cols-5 md:grid-cols-8 gap-1.5 max-h-32 overflow-y-auto bg-slate-950 p-2 rounded-lg border border-slate-700">
+                            <!-- Inyectado por JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA PREVIA Y MODOS DE JUEGO -->
+            <div class="flex flex-col gap-3">
+                <div class="bg-slate-900/90 border border-amber-500/30 rounded-xl p-3 flex flex-col items-center text-center">
+                    <div id="preview-avatar-box" class="w-16 h-16 rounded-xl bg-yellow-400 border-2 border-white flex items-center justify-center text-slate-900 shadow-xl mb-2 transition-all duration-300">
+                        <i id="preview-avatar-icon" class="fa-solid fa-kiwi-bird text-2xl"></i>
+                    </div>
+                    <p class="text-[9px] text-slate-300 italic">"Los pollitos de color no suelen durar mucho, demuestra que no es verdad."</p>
+                </div>
+
+                <div class="flex-1 grid grid-cols-1 gap-1.5 overflow-y-auto max-h-48 pr-1">
+                    <button onclick="startTutorial()" class="bg-sky-800 hover:bg-sky-700 p-2 rounded-lg text-left text-[10px] font-bold border border-sky-500/40">Tutorial</button>
+                    <button onclick="startGame('facil')" class="bg-emerald-700 hover:bg-emerald-600 p-2 rounded-lg text-left text-[10px] font-bold border border-emerald-500/40">Fácil (+1 pt)</button>
+                    <button onclick="startGame('normal')" class="bg-amber-700 hover:bg-amber-600 p-2 rounded-lg text-left text-[10px] font-bold border border-amber-500/40">Medio (+2 pts)</button>
+                    <button onclick="startGame('dificil')" class="bg-rose-800 hover:bg-rose-700 p-2 rounded-lg text-left text-[10px] font-bold border border-rose-500/40">Difícil (+5 pts)</button>
+                    <button onclick="startGame('supervivencia')" class="bg-purple-800 hover:bg-purple-700 p-2 rounded-lg text-left text-[10px] font-bold border border-purple-500/40">Supervivencia (+3 pts)</button>
+                    <button onclick="startGame('moneda')" class="bg-indigo-700 hover:bg-indigo-600 p-2 rounded-lg text-left text-[10px] font-bold border border-indigo-500/40">Pollito explotado</button>
+                    <button onclick="startGame('kaboom')" class="bg-orange-700 hover:bg-orange-600 p-2 rounded-lg text-left text-[10px] font-bold border border-orange-500/40">Modo Kaboom</button>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button onclick="showStoryMode()" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg text-center text-[10px] font-bold border border-slate-500/40"><i class="fa-solid fa-book"></i> Modo Historia</button>
+                        <button onclick="toggleCollection()" class="bg-fuchsia-800 hover:bg-fuchsia-700 p-2 rounded-lg text-center text-[10px] font-bold border border-fuchsia-500/40"><i class="fa-solid fa-layer-group"></i> Colección</button>
+                        <button onclick="toggleAchievements()" class="bg-yellow-700 hover:bg-yellow-600 p-2 rounded-lg text-center text-[10px] font-bold border border-yellow-500/40"><i class="fa-solid fa-trophy"></i> Logros</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. TABLERO PRINCIPAL DE JUEGO (CASINO) -->
+        <section id="screen-game" class="hidden w-full max-w-5xl flex flex-col gap-2">
+            <!-- BARRA SUPERIOR -->
+            <div class="grid grid-cols-2 gap-2 bg-slate-950/80 p-2 rounded-xl border border-amber-500/35">
+                <div class="flex items-center gap-2">
+                    <div id="player-avatar" class="w-8 h-8 rounded-lg border-2 border-white flex items-center justify-center text-slate-900 shadow-md">
+                        <i id="player-avatar-icon" class="fa-solid fa-kiwi-bird text-sm"></i>
+                    </div>
+                    <div>
+                        <div id="player-display-name" class="font-bold text-[10px] text-amber-300 truncate w-24">Pollito</div>
+                        <div id="player-display-prof" class="text-[8px] text-slate-400"></div>
+                        <div class="flex gap-2 text-[10px] font-pixel mt-0.5">
+                            <span class="text-emerald-400 relative"><i class="fa-solid fa-egg text-emerald-500"></i> <span id="player-chicks">0</span></span>
+                            <span class="text-rose-400 relative"><i class="fa-solid fa-bomb text-blue-500"></i> <span id="player-bombs">0</span></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-end gap-2 text-right">
+                    <div>
+                        <div id="rival-display-name" class="font-bold text-[10px] text-amber-300 leading-tight max-w-[8rem]">Rival</div>
+                        <div class="text-[8px] text-slate-400">Rival Virtual</div>
+                        <div class="flex gap-2 justify-end text-[10px] font-pixel mt-0.5">
+                            <span class="text-emerald-400"><i class="fa-solid fa-egg text-emerald-500"></i> <span id="rival-chicks">0</span></span>
+                            <span class="text-rose-400"><i class="fa-solid fa-bomb text-blue-500"></i> <span id="rival-bombs">0</span></span>
+                        </div>
+                    </div>
+                    <div id="rival-avatar" class="w-8 h-8 flex items-center justify-center text-white text-xl">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MESA DE CASINO VERDE INCLINADA -->
+            <div id="casino-table" class="bg-green-800/80 border-[8px] border-amber-900 rounded-3xl p-3 min-h-[350px] flex flex-col justify-between relative shadow-inner overflow-hidden perspective-1000">
+                
+                <!-- Animación Barajando -->
+                <div id="deck-anim" class="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center z-30 hidden">
+                    <div class="text-amber-400 font-pixel mb-4 animate-bounce text-[10px]">Barajando 50 cartas...</div>
+                    <div class="relative w-16 h-24">
+                        <div class="absolute inset-0 bg-rose-700 border-2 border-white rounded-lg flex items-center justify-center text-white font-pixel shadow-lg animate-pulse">Pb</div>
+                    </div>
+                </div>
+
+                <!-- BURBUJA DE DIÁLOGO TUTORIAL -->
+                <div id="tutorial-bubble" class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white text-slate-900 p-3 rounded-2xl border-4 border-slate-300 shadow-2xl z-40 hidden max-w-sm w-[90%] text-center text-[10px] font-bold">
+                    <p id="tutorial-bubble-text"></p>
+                    <button id="tutorial-bubble-btn" class="mt-2 bg-amber-500 px-3 py-1 rounded font-pixel text-[8px] border-2 border-slate-800 hover:bg-amber-400">Siguiente</button>
+                </div>
+
+                <!-- ÁREA SUPERIOR (Perspectiva Rival y Baraja) -->
+                <div class="flex justify-between items-start z-10 w-full relative">
+                    <!-- Vista desde arriba (Cartas Puestas) -->
+                    <div class="w-1/3 flex flex-col items-start bg-black/20 p-2 rounded-lg">
+                        <span class="text-[8px] text-amber-200 font-bold mb-1">Perspectiva desde arriba</span>
+                        <div id="top-view-area" class="w-20 h-28 relative flex flex-col justify-between">
+                            <!-- Carta Rival -->
+                            <div id="top-rival-slot" class="absolute top-0 left-4 w-10 h-14 flex items-center justify-center transition-all duration-[2000ms] ease-in-out"></div>
+                            <!-- Carta Jugador -->
+                            <div id="top-player-slot" class="absolute bottom-0 left-4 w-10 h-14 flex items-center justify-center transition-all duration-[2000ms] ease-in-out"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col items-center">
+                        <div class="w-12 h-16 bg-rose-900 border-2 border-white/60 rounded-lg flex items-center justify-center font-pixel text-white text-[8px] shadow-xl opacity-80">Pb</div>
+                        <span class="text-[8px] text-slate-300 mt-1">Baraja</span>
+                    </div>
+
+                    <!-- Mesa Mini Rival -->
+                    <div class="w-1/3 flex flex-col items-end">
+                         <span id="rival-small-name" class="text-[8px] text-amber-200 font-bold mb-1">Rival</span>
+                         <div id="rival-small-avatar" class="text-white text-lg mb-1"></div>
+                         <div id="rival-mini-table" class="w-16 h-16 border-2 border-dashed border-amber-500/50 rounded flex items-center justify-center relative">
+                             <!-- Aquí va la carta del rival chiquita -->
+                             <div id="rival-card-slot" class="w-10 h-14 transition-all duration-[1000ms]"></div>
+                         </div>
+                    </div>
+                </div>
+
+                <!-- ÁREA INFERIOR (Mesa Inclinada Jugador) -->
+                <div class="flex-1 flex justify-center items-end pb-4 z-10 relative">
+                    <div id="player-table-perspective" class="w-48 h-40 border-4 border-dashed border-amber-500/30 rounded-xl flex items-center justify-center relative transform rotateX-30">
+                        <span id="player-card-label" class="absolute -top-4 text-[9px] text-amber-200 font-bold">Tu Carta</span>
+                        <!-- Slot donde se anima la carta -->
+                        <div id="player-card-slot" class="w-20 h-28 transition-all duration-[1000ms] absolute"></div>
+                    </div>
+                </div>
+
+                <!-- PANEL DE CONTROLES -->
+                <div id="action-panel" class="bg-slate-950/90 border border-amber-500/40 p-2 rounded-xl mt-1 text-center z-20">
+                    <p id="action-message" class="text-[10px] font-semibold text-amber-200 mb-2 h-4"></p>
+                    <div id="action-buttons" class="flex flex-wrap gap-2 justify-center h-8 items-center"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. MODO POLLITO EXPLOTADO -->
+        <section id="screen-explotado" class="hidden relative w-full max-w-md bg-slate-900 border-2 border-indigo-500 rounded-2xl p-3 shadow-2xl overflow-hidden">
+            <div class="ex-layout">
+                <div class="ex-hud">
+                    <div class="flex flex-col gap-1.5 text-[10px] font-pixel">
+                        <div id="ex-timer" class="text-indigo-300">Sección: 15s</div>
+                        <div id="ex-lives" class="ex-lives"></div>
+                        <div class="flex gap-2 text-[12px]">
+                            <span id="ex-inv-plate" class="ex-inv" style="display:none;color:#e2e8f0"><i class="fa-solid fa-plate-wheat"></i></span>
+                            <span id="ex-inv-coin" class="ex-inv" style="display:none;color:#facc15"><i class="fa-solid fa-coins"></i></span>
+                        </div>
+                    </div>
+                    <div class="ex-hud-right">
+                        <button onclick="returnToMenu()" class="ex-menu-btn" aria-label="Volver al menú"><i class="fa-solid fa-house"></i> Menú</button>
+                        <div id="ex-map" class="ex-map"></div>
+                    </div>
+                </div>
+
+                <div class="ex-fieldwrap">
+                    <div class="ex-progress"><div id="ex-progress-fill"></div></div>
+                    <div id="ex-field" class="ex-field">
+                        <div id="ex-edge-up" class="ex-edge ex-edge-up"><i class="fa-solid fa-angles-up"></i></div>
+                        <div id="ex-edge-down" class="ex-edge ex-edge-down"><i class="fa-solid fa-angles-down"></i></div>
+                        <div id="ex-edge-left" class="ex-edge ex-edge-left"><i class="fa-solid fa-angles-left"></i></div>
+                        <div id="ex-edge-right" class="ex-edge ex-edge-right"><i class="fa-solid fa-angles-right"></i></div>
+                        <div id="ex-item" class="ex-item" style="display:none"></div>
+                        <div id="ex-bombs"></div>
+                        <div id="ex-chick" class="ex-chick">
+                            <i class="fa-solid fa-kiwi-bird"></i>
+                            <div id="ex-plate" class="ex-plate ex-plate-down" style="display:none"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ex-controls">
+                    <p id="ex-hint" class="text-[9px] text-indigo-200 text-center">Botones, deslizar en el campo, o flechas/WASD</p>
+                    <div class="ex-dpad">
+                        <button class="ex-dbtn ex-d-up" data-dir="up" aria-label="Arriba"><i class="fa-solid fa-chevron-up"></i></button>
+                        <button class="ex-dbtn ex-d-left" data-dir="left" aria-label="Izquierda"><i class="fa-solid fa-chevron-left"></i></button>
+                        <button class="ex-dbtn ex-d-down" data-dir="down" aria-label="Abajo"><i class="fa-solid fa-chevron-down"></i></button>
+                        <button class="ex-dbtn ex-d-right" data-dir="right" aria-label="Derecha"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="ex-intro" class="absolute inset-0 bg-slate-900/95 z-20 flex flex-col items-center justify-center p-4 text-center overflow-y-auto">
+                <h2 class="text-lg font-pixel text-indigo-400 mb-4">POLLITO EXPLOTADO</h2>
+                <p class="text-[10px] text-white mb-6 leading-loose">Mueve al pollito con los botones de dirección (o deslizando en el campo). Esquiva las bombas: si te tocan pierdes 1 de 5 vidas.<br>Aguanta 15 segundos en cada sección nueva para poder avanzar por un extremo hacia otra sección del mapa (arriba a la derecha). Las secciones que ya visitaste se recorren sin esperar.<br>La salida está marcada en rojo en el mapa y siempre queda al final. El mapa cambia en cada partida. Llega ahí y resiste 20 segundos para ganar.<br>En los callejones hay objetos: <i class="fa-solid fa-plate-wheat"></i> plato (te protege por el lado hacia donde te mueves), <i class="fa-solid fa-kiwi-bird text-yellow-300"></i> pollito enjaulado (libéralo para ganar +1 vida) y <i class="fa-solid fa-coins text-yellow-400"></i> moneda (más velocidad, solo hay una).<br>De vez en cuando cruzan corazones en lugar de bombas, al menos uno por sección: tócalos para ganar 1 vida (se acumulan).</p>
+                <button onclick="startExplodedGame()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-2 rounded-xl text-xs font-pixel mb-2">¿Listo?</button>
+                <button onclick="returnToMenu()" class="text-[9px] text-slate-400 underline mt-4">Volver al menú</button>
+            </div>
+        </section>
+
+        <!-- 5. MODO KABOOM -->
+        <section id="screen-kaboom" class="hidden w-full h-[80vh] md:h-[600px] max-w-3xl bg-green-800 border-[8px] border-amber-900 rounded-3xl relative overflow-hidden flex flex-col">
+            <div class="bg-slate-950/80 p-2 flex justify-between items-center gap-2 text-[10px] font-pixel border-b-2 border-amber-900 z-10">
+                <div class="text-amber-400">Puntos Kaboom: <span id="kaboom-score">0</span></div>
+                <button id="kaboom-defuse-btn" onclick="useKaboomDefuse()" disabled class="defuse-btn"><i class="fa-solid fa-bomb"></i> Desactivar <span id="kaboom-defuse-count">0/5</span></button>
+                <div class="text-white">Tiempo: <span id="kaboom-timer">2:00</span></div>
+            </div>
+            
+            <div id="kaboom-intro" class="absolute inset-0 bg-slate-900/90 z-20 flex flex-col items-center justify-center p-4 text-center">
+                <h2 class="text-2xl font-pixel text-orange-500 mb-4">KABOOM</h2>
+                <p class="text-[10px] text-white mb-6 leading-loose">Toca los pollitos antes de que escapen.<br>Cada 3 segundos aparece una bomba (máximo 4 a la vez) que persigue a los pollitos sin parar y no desaparece sola.<br>También cruzan bombas al azar, y cada 25 segundos llega una OLEADA de pollitos y bombas.<br>Si tocas una bomba explota y borra a los 4 pollitos más cercanos.<br>Cada 5 pollitos puedes usar DESACTIVAR para borrar todas las bombas.<br>Ganas 1 punto global por cada 5 pollitos capturados.<br>Si tocas 3 bombas o pasas 15 segundos sin atrapar un pollito, pierdes.</p>
+                <button onclick="startKaboomGame()" class="bg-orange-600 hover:bg-orange-500 text-white font-bold px-6 py-2 rounded-xl text-xs font-pixel mb-2">¿Listo?</button>
+                <button onclick="returnToMenu()" class="text-[9px] text-slate-400 underline mt-4">Volver al menú</button>
+            </div>
+
+            <div id="kaboom-area" class="flex-1 relative w-full h-full cursor-crosshair">
+                <!-- Círculos generados por JS -->
+            </div>
+        </section>
+
+        <!-- 6. TIENDA DE AVATARES -->
+        <div id="store-modal" class="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-4 hidden">
+            <div class="bg-slate-900 border-2 border-emerald-500 rounded-2xl max-w-lg w-full p-4 flex flex-col max-h-[80vh]">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-sm font-pixel text-emerald-400"><i class="fa-solid fa-store"></i> Tienda (10 pts c/u)</h2>
+                    <button onclick="toggleStore()" class="text-slate-400 hover:text-white text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="text-[10px] text-amber-300 mb-2">Tus Puntos: <span id="store-points">0</span></div>
+                <div id="store-grid" class="grid grid-cols-4 md:grid-cols-6 gap-2 overflow-y-auto p-1">
+                    <!-- Inyectado por JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. MODAL DE FIN DE JUEGO GENERAL -->
+        <div id="game-over-modal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 hidden">
+            <div class="bg-slate-900 border-2 border-amber-500 rounded-2xl max-w-md w-full p-6 text-center space-y-4">
+                <h2 id="game-over-title" class="text-xl md:text-2xl font-pixel text-amber-400"></h2>
+                <p id="game-over-msg" class="text-[11px] md:text-xs text-slate-300"></p>
+                <div id="game-over-rewards" class="text-amber-300 text-[10px] font-bold"></div>
+                <div class="flex justify-center gap-3 mt-4">
+                    <button id="btn-play-again" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-[10px] font-pixel">Jugar de Nuevo</button>
+                    <button onclick="returnToMenu()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-4 py-2 rounded-xl text-[10px] font-pixel">Menú</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. MODAL REGLAS TUTORIAL -->
+        <div id="tutorial-rules-modal" class="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 hidden">
+            <div class="bg-slate-800 border-2 border-sky-500 rounded-2xl max-w-md w-full p-6 relative">
+                <button onclick="closeTutorialRules()" class="absolute top-2 right-2 text-slate-400 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
+                <h2 class="text-sm font-pixel text-sky-400 mb-4 text-center">¿Cómo se juega?</h2>
+                <div class="text-[9px] text-slate-200 space-y-2 max-h-[60vh] overflow-y-auto pr-2 text-left">
+                    <p>1. La ronda inicia repartiendo una carta a cada uno.</p>
+                    <p>2. Se ve la carta y se voltea de nuevo.</p>
+                    <p>3. Las cartas se intercambian e inicia la fase de mención.</p>
+                    <p>4. Debes mencionar la carta que tenías y ahora tiene tu rival, puedes mentir o decir la verdad.</p>
+                    <p>5. Tu rival también mencionará qué carta tenía, ¿Miente o dice la verdad?</p>
+                    <p>6. Ahora decide, te quedas con la carta o se la avientas.</p>
+                    <p>7. Si al final tienes una carta, 2 cartas o ninguna dependerá de ti y tu rival.</p>
+                    <p>8. Las cartas se voltean, si tienes un pollito sumas un punto, si tienes una bomba pierdes un punto, si tienes una bomba y un pollito no pasa nada porque tu hermano desactiva la bomba y vuelven a la baraja.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 9. MODAL MODO HISTORIA (POLLITO CHEF) -->
+        <div id="story-modal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 hidden">
+            <div class="relative bg-gradient-to-b from-amber-900/70 to-slate-900 border-4 border-amber-400 rounded-3xl max-w-sm w-full p-6 pt-10 text-center shadow-2xl overflow-hidden">
+                <div class="absolute -top-10 -left-10 w-32 h-32 rounded-full bg-orange-500/20 blur-2xl"></div>
+                <div class="absolute -bottom-10 -right-10 w-32 h-32 rounded-full bg-amber-400/20 blur-2xl"></div>
+
+                <div class="relative mx-auto w-28 h-28 mt-6 mb-4">
+                    <i class="fa-solid fa-utensils text-amber-200 text-xl absolute -left-8 top-12 chef-float"></i>
+                    <i class="fa-solid fa-fire text-orange-400 text-xl absolute -right-8 top-12 chef-float chef-float-delay"></i>
+                    <div class="chef-hat"><span class="puff p1"></span><span class="puff p2"></span><span class="puff p3"></span><span class="base"></span></div>
+                    <div class="chef-bounce w-28 h-28 rounded-full bg-yellow-400 border-4 border-white flex items-center justify-center shadow-xl">
+                        <i class="fa-solid fa-kiwi-bird text-slate-900 text-5xl"></i>
+                    </div>
+                </div>
+
+                <h2 class="font-pixel text-amber-400 text-sm mb-3">Pollito Chef</h2>
+                <div class="story-bubble relative bg-white text-slate-900 rounded-2xl border-4 border-slate-300 p-3 text-[11px] font-bold">
+                    ¡Espera, aún se está cocinando!
+                </div>
+
+                <div class="flex justify-center gap-3 text-xl mt-5 mb-3">
+                    <i class="fa-solid fa-fire text-orange-500 flame"></i>
+                    <i class="fa-solid fa-fire text-amber-400 flame flame-2"></i>
+                    <i class="fa-solid fa-fire text-red-500 flame flame-3"></i>
+                </div>
+                <div class="cook-bar"><div class="cook-fill"></div></div>
+                <p class="text-[8px] font-pixel text-amber-200 mt-2">Cocinando el Modo Historia...</p>
+
+                <button onclick="closeStoryModal()" class="mt-5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-2 rounded-xl text-[10px] font-pixel border-2 border-white">Entendido</button>
+            </div>
+        </div>
+
+        <!-- 10. COLECCIÓN DE CARTAS -->
+        <div id="collection-modal" class="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-4 hidden">
+            <div class="bg-slate-900 border-2 border-fuchsia-500 rounded-2xl max-w-2xl w-full p-4 flex flex-col max-h-[88vh]">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-sm font-pixel text-fuchsia-400"><i class="fa-solid fa-layer-group"></i> Colección</h2>
+                    <button onclick="toggleCollection()" class="text-slate-400 hover:text-white text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <button id="tab-col-pollito" onclick="setCollectionTab('pollito')" class="p-2 rounded-lg text-[9px] font-pixel border-2">Pollitos <span id="col-count-pollito">0/25</span></button>
+                    <button id="tab-col-bomba" onclick="setCollectionTab('bomba')" class="p-2 rounded-lg text-[9px] font-pixel border-2">Bombas <span id="col-count-bomba">0/25</span></button>
+                </div>
+                <div id="collection-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 overflow-y-auto p-1">
+                    <!-- Inyectado por JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 11. DETALLE DE CARTA DESBLOQUEADA -->
+        <div id="card-detail-modal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4 hidden" onclick="closeCardDetail()">
+            <div class="flex flex-col items-center gap-4 max-w-xs w-full" onclick="event.stopPropagation()">
+                <div id="card-detail-card" class="w-44"></div>
+                <div id="card-detail-text" class="bg-white text-slate-900 border-4 border-slate-300 rounded-2xl p-3 text-[11px] font-bold text-center leading-relaxed shadow-2xl"></div>
+                <button onclick="closeCardDetail()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-5 py-2 rounded-xl text-[10px] font-pixel">Cerrar</button>
+            </div>
+        </div>
+
+        <!-- 12. LOGROS -->
+        <div id="achievements-modal" class="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-4 hidden">
+            <div class="bg-slate-900 border-2 border-yellow-500 rounded-2xl max-w-2xl w-full p-4 flex flex-col max-h-[88vh]">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-sm font-pixel text-yellow-400"><i class="fa-solid fa-trophy"></i> Logros <span id="ach-count">0/0</span></h2>
+                    <button onclick="toggleAchievements()" class="text-slate-400 hover:text-white text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div id="achievements-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 overflow-y-auto p-1"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="p-2 bg-slate-950 text-center text-[8px] text-slate-500 border-t border-slate-900">
+        Proyecto hecho por YEPJ
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
